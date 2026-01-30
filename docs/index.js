@@ -10,6 +10,25 @@ const { PuppeteerScreenRecorder } = require("puppeteer-screen-recorder");
 
 puppeteer.use(StealthPlugin())
 
+// parsing jam dari row XLSX, misal "09:00,10:15"
+function parseJamRow(jamStr) {
+  if (!jamStr) return [];
+  return jamStr
+    .split(",")
+    .map(j => j.trim())
+    .filter(Boolean);
+}
+
+// cek apakah jam sekarang ada di list jam row
+function isJamNow(jamList) {
+  const now = new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" })
+  );
+  const nowHHmm = now.toTimeString().slice(0, 5); // format "HH:mm"
+  return jamList.includes(nowHHmm);
+}
+
+
 //Helper isi caption status 
 async function typeCaptionSafe(page, caption) {
   const selector =
@@ -994,47 +1013,53 @@ function delay(ms) {
 console.log("📋 Semua status rows:", statusRows);
      
 
-      const rowsStatusForAccount = statusRows.filter(row => {
-  if (row.account !== acc.account) return false;
+     //$ const rowsStatusForAccount = statusRows.filter(row => {
+ //$ if (row.account !== acc.account) return false;
 
-  const rowDate = parseTanggalXLSX(row.tanggal);
-  return rowDate === today;
-});
+  //$const rowDate = parseTanggalXLSX(row.tanggal);
+ //$ return rowDate === today;
+//$});
       
 
 
       //coba baru filter grup 
-     const rowsForAccount = groupRows.filter(row => {
-    if (row.account !== acc.account) return false;
-    const rowDate = parseTanggalXLSX(row.tanggal);
-  return rowDate === today;
- });
+     //$const rowsForAccount = groupRows.filter(row => {
+    //$if (row.account !== acc.account) return false;
+   //$ const rowDate = parseTanggalXLSX(row.tanggal);
+ //$ return rowDate === today;
+//$ });
       
- // ================== FILTER GROUP BERDASARKAN TANGGAL ==================
-//group/const rowsForAccount = groupRows.filter(row => {
- // if (row.account !== acc.account) return false;
+ // untuk grup
+const rowsForAccount = groupRows.filter(row => {
+  if (row.account !== acc.account) return false;
 
- // if (!row.tanggal) {
-//    console.log("⚠️ Row grup TANPA tanggal, skip:", row);
-  //  return false;
-  //}
-//
- // const rowDate = parseTanggalXLSX(row.tanggal);
+  const rowDate = parseTanggalXLSX(row.tanggal);
+  if (rowDate !== today) return false;
 
-//  if (!rowDate) {
-   // console.log("⚠️ Format tanggal grup tidak valid:", row.tanggal);
-  //  return false;
-  //}
+  const jamList = parseJamRow(row.jam);
+  if (jamList.length === 0) return false;
 
- // if (rowDate !== today) {
-   // console.log(
-    ///  `⏭️ Skip grup karena beda tanggal → XLSX: ${rowDate}, TODAY: ${today}`
-   // );
-   /// return false;
- /// }
+  if (!isJamNow(jamList)) {
+    console.log(`⏭️ Skip row, jam sekarang tidak cocok: ${jamList.join(",")}`);
+    return false;
+  }
 
- /// return true;
-//$group});
+  return true;
+});
+
+// untuk status
+const rowsStatusForAccount = statusRows.filter(row => {
+  if (row.account !== acc.account) return false;
+
+  const rowDate = parseTanggalXLSX(row.tanggal);
+  if (rowDate !== today) return false;
+
+  const jamList = parseJamRow(row.jam);
+  if (jamList.length === 0) return false;
+
+  return isJamNow(jamList);
+});
+
 
 console.log("ACCOUNT JSON:", `[${acc.account}]`);
    
