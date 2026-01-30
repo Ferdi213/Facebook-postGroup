@@ -1013,52 +1013,52 @@ function delay(ms) {
 console.log("📋 Semua status rows:", statusRows);
      
 
-     //$ const rowsStatusForAccount = statusRows.filter(row => {
- //$ if (row.account !== acc.account) return false;
+     const rowsStatusForAccount = statusRows.filter(row => {
+  if (row.account !== acc.account) return false;
 
-  //$const rowDate = parseTanggalXLSX(row.tanggal);
- //$ return rowDate === today;
-//$});
+  const rowDate = parseTanggalXLSX(row.tanggal);
+  return rowDate === today;
+});
       
 
 
       //coba baru filter grup 
-     //$const rowsForAccount = groupRows.filter(row => {
-    //$if (row.account !== acc.account) return false;
-   //$ const rowDate = parseTanggalXLSX(row.tanggal);
- //$ return rowDate === today;
-//$ });
+     const rowsForAccount = groupRows.filter(row => {
+    if (row.account !== acc.account) return false;
+    const rowDate = parseTanggalXLSX(row.tanggal);
+  return rowDate === today;
+ });
       
  // untuk grup
-const rowsForAccount = groupRows.filter(row => {
-  if (row.account !== acc.account) return false;
+//const rowsForAccount = groupRows.filter(row => {
+  //if (row.account !== acc.account) return false;
 
-  const rowDate = parseTanggalXLSX(row.tanggal);
-  if (rowDate !== today) return false;
+ /// const rowDate = parseTanggalXLSX(row.tanggal);
+ /// if (rowDate !== today) return false;
 
-  const jamList = parseJamRow(row.jam);
-  if (jamList.length === 0) return false;
+ /// const jamList = parseJamRow(row.jam);
+ /// if (jamList.length === 0) return false;
 
-  if (!isJamNow(jamList)) {
-    console.log(`⏭️ Skip row, jam sekarang tidak cocok: ${jamList.join(",")}`);
-    return false;
-  }
+ /// if (!isJamNow(jamList)) {
+   /// console.log(`⏭️ Skip row, jam sekarang tidak cocok: ${jamList.join(",")}`);
+//  return false;
+ // }
 
-  return true;
-});
+ // return true;
+//});
 
 // untuk status
-const rowsStatusForAccount = statusRows.filter(row => {
-  if (row.account !== acc.account) return false;
+//const rowsStatusForAccount = statusRows.filter(row => {
+ /// if (row.account !== acc.account) return false;
 
-  const rowDate = parseTanggalXLSX(row.tanggal);
-  if (rowDate !== today) return false;
+ // const rowDate = parseTanggalXLSX(row.tanggal);
+ /// if (rowDate !== today) return false;
 
-  const jamList = parseJamRow(row.jam);
-  if (jamList.length === 0) return false;
+ /// const jamList = parseJamRow(row.jam);
+ /// if (jamList.length === 0) return false;
 
-  return isJamNow(jamList);
-});
+ // return isJamNow(jamList);
+///});
 
 
 console.log("ACCOUNT JSON:", `[${acc.account}]`);
