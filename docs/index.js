@@ -10,25 +10,6 @@ const { PuppeteerScreenRecorder } = require("puppeteer-screen-recorder");
 
 puppeteer.use(StealthPlugin())
 
-// parsing jam dari row XLSX, misal "09:00,10:15"
-function parseJamRow(jamStr) {
-  if (!jamStr) return [];
-  return jamStr
-    .split(",")
-    .map(j => j.trim())
-    .filter(Boolean);
-}
-
-// cek apakah jam sekarang ada di list jam row
-function isJamNow(jamList) {
-  const now = new Date(
-    new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" })
-  );
-  const nowHHmm = now.toTimeString().slice(0, 5); // format "HH:mm"
-  return jamList.includes(nowHHmm);
-}
-
-
 //Helper isi caption status 
 async function typeCaptionSafe(page, caption) {
   const selector =
@@ -547,41 +528,41 @@ await page.evaluate(() => {
 });
 
 console.log("✅ Klik POST (EN+ID)");
-await delay(4000);
-//console.log(`✅ Posting selesai untuk ${account}`);
+await delay(3000);
+console.log(`✅ Posting selesai untuk ${account}`);
     
   //----FUNGSI MELAKUKAN LIKE POSTINGAN DI LINK GRUP ---////
     
- // await page.goto(groupUrl, { waitUntil: "networkidle2" });
- // console.log(" Mulai akan lakukan like postingan");
+  await page.goto(groupUrl, { waitUntil: "networkidle2" });
+  console.log(" Mulai akan lakukan like postingan");
     
-  ///let max = 10;        // jumlah like maksimal
- /// let delayMs = 3000;  // delay antar aksi (ms)
-  ///let clicked = 0;
-    
-  //async function delay(ms) {
-  //  return new Promise(res => setTimeout(res, ms));
-//  }
+  let max = 10;        // jumlah like maksimal
+  let delayMs = 3000;  // delay antar aksi (ms)
+  let clicked = 0;
 
- // while (clicked < max) {
-  //  const button = await page.$(
-  //    'div[role="button"][aria-label*="Like"],div[role="button"][aria-label*="like"], div[role="button"][aria-label*="Suka"]'
-  /// );
+  async function delay(ms) {
+    return new Promise(res => setTimeout(res, ms));
+  }
 
- /// if (button) {
- //     await button.tap(); // ✅ simulate tap (touchscreen)
-  ///    clicked++;
-    //  console.log(`👍 Klik tombol Like ke-${clicked}`);
-  ///  } else {
- ///     console.log("🔄 Tidak ada tombol Like, scroll...");
-///    }
+  while (clicked < max) {
+    const button = await page.$(
+      'div[role="button"][aria-label*="Like"],div[role="button"][aria-label*="like"], div[role="button"][aria-label*="Suka"]'
+   );
+
+  if (button) {
+      await button.tap(); // ✅ simulate tap (touchscreen)
+      clicked++;
+      console.log(`👍 Klik tombol Like ke-${clicked}`);
+    } else {
+      console.log("🔄 Tidak ada tombol Like, scroll...");
+    }
 
     // Scroll sedikit biar postingan baru muncul
- ///   await page.evaluate(() => window.scrollBy(0, 500));
-///   await delay(delayMs);
-// }
+    await page.evaluate(() => window.scrollBy(0, 500));
+   await delay(delayMs);
+ }
 
- ///console.log(`🎉 Selesai! ${clicked} tombol Like sudah diklik.`);
+ console.log(`🎉 Selesai! ${clicked} tombol Like sudah diklik.`);
 
 
 
@@ -1013,7 +994,7 @@ function delay(ms) {
 console.log("📋 Semua status rows:", statusRows);
      
 
-     const rowsStatusForAccount = statusRows.filter(row => {
+      const rowsStatusForAccount = statusRows.filter(row => {
   if (row.account !== acc.account) return false;
 
   const rowDate = parseTanggalXLSX(row.tanggal);
@@ -1029,37 +1010,31 @@ console.log("📋 Semua status rows:", statusRows);
   return rowDate === today;
  });
       
- // untuk grup
-//const rowsForAccount = groupRows.filter(row => {
-  //if (row.account !== acc.account) return false;
+ // ================== FILTER GROUP BERDASARKAN TANGGAL ==================
+//group/const rowsForAccount = groupRows.filter(row => {
+ // if (row.account !== acc.account) return false;
 
- /// const rowDate = parseTanggalXLSX(row.tanggal);
- /// if (rowDate !== today) return false;
-
- /// const jamList = parseJamRow(row.jam);
- /// if (jamList.length === 0) return false;
-
- /// if (!isJamNow(jamList)) {
-   /// console.log(`⏭️ Skip row, jam sekarang tidak cocok: ${jamList.join(",")}`);
-//  return false;
- // }
-
- // return true;
-//});
-
-// untuk status
-//const rowsStatusForAccount = statusRows.filter(row => {
- /// if (row.account !== acc.account) return false;
-
+ // if (!row.tanggal) {
+//    console.log("⚠️ Row grup TANPA tanggal, skip:", row);
+  //  return false;
+  //}
+//
  // const rowDate = parseTanggalXLSX(row.tanggal);
- /// if (rowDate !== today) return false;
 
- /// const jamList = parseJamRow(row.jam);
- /// if (jamList.length === 0) return false;
+//  if (!rowDate) {
+   // console.log("⚠️ Format tanggal grup tidak valid:", row.tanggal);
+  //  return false;
+  //}
 
- // return isJamNow(jamList);
-///});
+ // if (rowDate !== today) {
+   // console.log(
+    ///  `⏭️ Skip grup karena beda tanggal → XLSX: ${rowDate}, TODAY: ${today}`
+   // );
+   /// return false;
+ /// }
 
+ /// return true;
+//$group});
 
 console.log("ACCOUNT JSON:", `[${acc.account}]`);
    
@@ -1103,9 +1078,9 @@ for (const row of rowsForAccount) {
   await runAccount(page, row);
   }
       // POST STATUS (kalau ada)
-for (const row of rowsStatusForAccount) {
-  await runStatus(page, row);
-  }
+//for (const row of rowsStatusForAccount) {
+  //await runStatus(page, row);
+//}
 
       // ===== Stop recorder
       await recorder.stop();
