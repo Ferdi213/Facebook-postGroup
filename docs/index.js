@@ -11,13 +11,13 @@ const { PuppeteerScreenRecorder } = require("puppeteer-screen-recorder");
 puppeteer.use(StealthPlugin())
 
 //parsing jam dari row XLSX, misal "09:00,10:15"
-function parseJamRow(jamStr) {
- if (!jamStr) return [];
-  return jamStr
-   .split(",")
-    .map(j => j.trim())
-    .filter(Boolean);
-}
+//function parseJamRow(jamStr) {
+// if (!jamStr) return [];
+ // return jamStr
+ //  .split(",")
+//    .map(j => j.trim())
+   // .filter(Boolean);
+//}
 
 // cek apakah jam sekarang ada di list jam row
 function isJamNow(jamList) {
