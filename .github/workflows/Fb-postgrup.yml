@@ -1,12 +1,12 @@
 name: Facebook Bot
 
 on:
-  workflow_dispatch:
+  #workflow_dispatch:
   schedule:
     - cron: "* * * * *"
-  push:
-    branches:
-      - main
+ # push:
+  #  branches:
+     # - main
 
 concurrency:
   group: facebook-bot
