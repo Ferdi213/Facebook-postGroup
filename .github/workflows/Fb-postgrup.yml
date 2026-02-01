@@ -5,8 +5,8 @@ on:
   workflow_dispatch:
 
   # Jalan otomatis jam 07:36 WIB (UTC+7 → 00:36 UTC)
-  schedule:
-     - cron: "*/1 * * * *"
+  #schedule:
+    #- cron: "*/1 * * * *"
      
 
 jobs:
