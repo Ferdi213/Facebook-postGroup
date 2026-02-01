@@ -1,7 +1,7 @@
 name: Facebook Bot
 
 on:
-  #workflow_dispatch:
+  workflow_dispatch:
   schedule:
     - cron: "* * * * *"
  # push:
