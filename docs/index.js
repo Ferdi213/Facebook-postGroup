@@ -10,7 +10,7 @@ const { PuppeteerScreenRecorder } = require("puppeteer-screen-recorder");
 
 puppeteer.use(StealthPlugin())
 
-parsing jam dari row XLSX, misal "09:00,10:15"
+//parsing jam dari row XLSX, misal "09:00,10:15"
 function parseJamRow(jamStr) {
  if (!jamStr) return [];
   return jamStr
