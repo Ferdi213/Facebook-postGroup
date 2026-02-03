@@ -18,6 +18,19 @@ function parseJamRow(jamStr) {
       .filter(Boolean);
   }
 
+//Solusi: lock file per jam
+function alreadyPostedToday(account, type, jam) {
+  const key = `${account}_${type}_${jam}_${getTodayWIB().toISOString().slice(0,10)}`;
+  const file = path.join(__dirname, ".posted", key);
+
+  if (fs.existsSync(file)) return true;
+
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, "ok");
+  return false;
+}
+
+
 // cek apakah jam sekarang ada di list jam row
 function isJamNow(jamList) {
  const now = new Date(
