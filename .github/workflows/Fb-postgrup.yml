@@ -1,13 +1,16 @@
 name: Facebook Bot
 
 on:
-  # Manual trigger (WAJIB ada buat test)
   workflow_dispatch:
-
-  # Jalan otomatis jam 07:36 WIB (UTC+7 → 00:36 UTC)
   schedule:
     - cron: "*/5 * * * *"
-     
+  push:
+   branches:
+       - main
+
+concurrency:
+  group: facebook-bot
+  cancel-in-progress: true
 
 jobs:
   run-bot:
@@ -25,7 +28,6 @@ jobs:
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
-      # Bot jalan, tanggal WIB diambil dari index.js
       - name: Run Puppeteer bot
         run: node docs/index.js
         env:
