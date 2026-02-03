@@ -1611,36 +1611,58 @@ await page.goto("https://m.facebook.com", { waitUntil: "networkidle2" });
   //}
 
       // ✅ LANGSUNG POSTGROUP PAKAI DATA (DENGAN LOCK JAM)
+      
 for (const row of rowsForAccount) {
 
-  // ambil jam sekarang WIB
+  // 1️⃣ ambil daftar jam dari XLSX
+  const jamList = parseJamRow(row.jam || row.waktu || row.jadwal);
+  if (jamList.length === 0) {
+    console.log("⚠️ Tidak ada jam di XLSX, skip row");
+    continue;
+  }
+
+  // 2️⃣ cek apakah sekarang cocok jam XLSX
+  if (!isJamNow(jamList)) {
+    console.log("⏭️ Bukan jam XLSX, skip:", jamList);
+    continue;
+  }
+
+  // 3️⃣ jam sekarang WIB
   const jamNow = new Date(
     new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" })
   ).toTimeString().slice(0, 5);
 
-  // 🔒 CEK SUDAH POST BELUM DI JAM INI, untuk postGroup 
+  // 4️⃣ lock per jam
   if (alreadyPostedToday(acc.account, "group", jamNow)) {
-    console.log(`⏭️ [GROUP] ${acc.account} sudah posting jam ${jamNow}, skip`);
-    continue; // ⛔ PENTING
+    console.log(`⏭️ [GROUP] ${acc.account} sudah posting jam ${jamNow}`);
+    continue;
   }
 
+  // 5️⃣ BARU POST
   await runAccount(page, row);
 }
 
+
       //untuk status 
-  for (const row of rowsStatusForAccount) {
+for (const row of rowsStatusForAccount) {
+
+  const jamList = parseJamRow(row.jam || row.waktu || row.jadwal);
+  if (jamList.length === 0) continue;
+
+  if (!isJamNow(jamList)) continue;
 
   const jamNow = new Date(
     new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" })
   ).toTimeString().slice(0, 5);
 
   if (alreadyPostedToday(acc.account, "status", jamNow)) {
-    console.log(`⏭️ [STATUS] ${acc.account} sudah posting jam ${jamNow}, skip`);
+    console.log(`⏭️ [STATUS] ${acc.account} sudah posting jam ${jamNow}`);
     continue;
   }
 
   await runStatus(page, row);
 }
+      
 
 
       // ===== Stop recorder
