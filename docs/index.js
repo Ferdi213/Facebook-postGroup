@@ -1601,13 +1601,46 @@ await page.goto("https://m.facebook.com", { waitUntil: "networkidle2" });
     await page.reload({ waitUntil: "networkidle2" });
 
       // ✅ LANGSUNG POSTGROUP PAKAI DATA
-    for (const row of rowsForAccount) {
-     await runAccount(page, row);
-    }
+   // jalan for (const row of rowsForAccount) {
+     //await runAccount(page, row);
+   // }
       // POST STATUS (kalau ada)
- for (const row of rowsStatusForAccount) {
-    await runStatus(page, row);
+//jalan for (const row of rowsStatusForAccount) {
+    //await runStatus(page, row);
+  //}
+
+      // ✅ LANGSUNG POSTGROUP PAKAI DATA (DENGAN LOCK JAM)
+for (const row of rowsForAccount) {
+
+  // ambil jam sekarang WIB
+  const jamNow = new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" })
+  ).toTimeString().slice(0, 5);
+
+  // 🔒 CEK SUDAH POST BELUM DI JAM INI, untuk postGroup 
+  if (alreadyPostedToday(acc.account, "group", jamNow)) {
+    console.log(`⏭️ [GROUP] ${acc.account} sudah posting jam ${jamNow}, skip`);
+    continue; // ⛔ PENTING
   }
+
+  await runAccount(page, row);
+}
+
+      //untuk status 
+  for (const row of rowsStatusForAccount) {
+
+  const jamNow = new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" })
+  ).toTimeString().slice(0, 5);
+
+  if (alreadyPostedToday(acc.account, "status", jamNow)) {
+    console.log(`⏭️ [STATUS] ${acc.account} sudah posting jam ${jamNow}, skip`);
+    continue;
+  }
+
+  await runStatus(page, row);
+}
+
 
       // ===== Stop recorder
       await recorder.stop();
