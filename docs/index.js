@@ -9,15 +9,14 @@ const StealthPlugin = require("puppeteer-extra-plugin-stealth");
 const { PuppeteerScreenRecorder } = require("puppeteer-screen-recorder");
 
 puppeteer.use(StealthPlugin())
-
-//parsing jam dari row XLSX, misal "09:00,10:15"
-//function parseJamRow(jamStr) {
-// if (!jamStr) return [];
- // return jamStr
- //  .split(",")
-//    .map(j => j.trim())
-   // .filter(Boolean);
-//}
+parsing jam dari row XLSX, misal "09:00,10:15"
+function parseJamRow(jamStr) {
+  if (!jamStr) return [];
+   return jamStr
+    .split(",")
+     .map(j => j.trim())
+      .filter(Boolean);
+  }
 
 // cek apakah jam sekarang ada di list jam row
 function isJamNow(jamList) {
@@ -27,7 +26,455 @@ function isJamNow(jamList) {
   const nowHHmm = now.toTimeString().slice(0, 5); // format "HH:mm"
   return jamList.includes(nowHHmm);
 }
+//Validasinya 
+async function validateCaption(page, caption) {
+  return await page.evaluate(text => {
+    const el =
+      document.querySelector('div[contenteditable="true"][role="textbox"]') ||
+      document.querySelector('div[contenteditable="true"]') ||
+      document.querySelector('textarea');
 
+    if (!el) return false;
+
+    const domVal =
+      el.textContent ||
+      el.innerText ||
+      el.value ||
+      "";
+
+    // fallback React internal (FB pakai data-text)
+    const dataText = el.getAttribute("data-text") || "";
+
+    return (
+      domVal.includes(text.slice(0, 3)) ||
+      dataText.includes(text.slice(0, 3))
+    );
+  }, caption);
+}
+
+
+//ISI CAPTION type manusia tahan update 
+
+async function typeCaptionStable(page, caption) {
+  // 1️⃣ AKTIFKAN COMPOSER (WAJIB KLIK)
+  await page.evaluate(() => {
+    // klik area composer (placeholder / container)
+    const candidates = [
+      '[role="textbox"]',
+      '[role="combobox"]',
+      'textarea',
+      'div[contenteditable="true"]',
+      '[aria-label*="Buat postingan publik"]',
+      '[aria-label*="Create a public post"]',
+      '[aria-label*="Submit a post for admin"]',
+      '[aria-label*="Kirim postingan untuk persetujuan admin"]',
+      '[aria-label*="Tulis sesuatu"]',
+      '[aria-label*="Write something"]'
+    ];
+
+    for (const sel of candidates) {
+      const el = document.querySelector(sel);
+      if (el) {
+        el.click();
+        return true;
+      }
+    }
+    return false;
+  });
+
+  await page.waitForTimeout(2000);
+
+    // 2️⃣ PASTIKAN FOCUS (TANPA SET textContent)
+const focused = await page.evaluate(() => {
+  const candidates = Array.from(
+    document.querySelectorAll(
+      'div[contenteditable="true"][role="textbox"], div[contenteditable="true"], textarea'
+    )
+  );
+
+  for (const el of candidates) {
+    el.click();
+    el.focus();
+
+    if (document.activeElement === el) {
+      return true;
+    }
+  }
+  return false;
+});
+
+  //ketik caption 
+  // 3️⃣ TYPE CAPTION (WAJIB)
+  // 3️⃣ TYPE CAPTION (HUMAN-LIKE + RANDOM)
+  for (const char of caption) {
+    const delay = 80 + Math.random() * 100; // 80–200 ms
+    await page.keyboard.type(char, { delay });
+
+    // jeda mikir kecil (±5%)
+    if (Math.random() < 0.05) {
+      await page.waitForTimeout(300 + Math.random() * 700);
+    }
+  }
+  await page.waitForTimeout(1000);
+
+  
+  // 4️⃣ COMMIT REACT
+  await page.keyboard.press("Space");
+  await page.keyboard.press("Backspace");
+
+// 5️⃣ VALIDASI
+const ok = await validateCaption(page, caption);
+
+if (ok) {
+  return { ok: true, step: "stable_ok" };
+}
+
+console.log("⚠️ Caption tidak tervalidasi");
+return { ok: false, step: "validation_failed" };
+                             
+
+
+  console.log("⚠️ Caption tidak tervalidasi");
+  return { ok: false, step: "validation_failed" };
+}
+
+
+//isi caption klik placeholder 
+async function activateComposerAndFillCaption(page, caption) {
+  return await page.evaluate((text) => {
+    const placeholderKeywords = [
+      "write something",
+      "tulis sesuatu",
+      "buat postingan publik",
+      "create a public post",
+      "kirim postingan buat persetujuan admin",
+      "submit a post for admin"
+    ];
+
+    // ===============================
+    // 1️⃣ CLICK PLACEHOLDER (DOM BUTTON)
+    // ===============================
+    const btn = [...document.querySelectorAll("div[role='button']")]
+      .find(el => {
+        const t = (el.innerText || "").toLowerCase();
+        return placeholderKeywords.some(k => t.includes(k));
+      });
+
+    if (btn) {
+      ["mousedown", "mouseup", "click"].forEach(type =>
+        btn.dispatchEvent(
+          new MouseEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            view: window
+          })
+        )
+      );
+    }
+
+    // ===============================
+    // 2️⃣ FIND & FILL TEXTBOX
+    // ===============================
+    const selectors = [
+  "div[contenteditable='true'][role='textbox']",
+  "div[contenteditable='true']",
+  "textarea"
+];
+    for (const s of selectors) {
+      const tb = document.querySelector(s);
+      if (!tb) continue;
+
+      tb.focus();
+
+      // clear dulu (penting buat React)
+      if ("value" in tb) {
+        tb.value = "";
+      } else {
+        tb.innerText = "";
+        tb.textContent = "";
+      }
+
+      // isi caption
+      if ("value" in tb) {
+        tb.value = text;
+        tb.dispatchEvent(new Event("input", { bubbles: true }));
+        tb.dispatchEvent(new Event("change", { bubbles: true }));
+      } else {
+        tb.innerText = text;
+        tb.dispatchEvent(new InputEvent("input", { bubbles: true }));
+        tb.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+
+      return {
+        ok: true,
+        step: "activate+fill",
+        selector: s
+      };
+    }
+
+    return {
+      ok: false,
+      step: "textbox_not_found"
+    };
+  }, caption);
+}
+
+//caption keyboard 
+async function typeByKeyboard(page, caption) {
+  const el = document.querySelector(
+  'div[contenteditable="true"][role="textbox"], div[contenteditable="true"], textarea'
+);
+ await page.click(selector);
+  await page.waitForTimeout(1000);
+    // 3️⃣ TYPE CAPTION (HUMAN-LIKE + RANDOM)
+  for (const char of caption) {
+    const delay = 80 + Math.random() * 120; // 80–200 ms
+    await page.keyboard.type(char, { delay });
+
+    // jeda mikir kecil (±5%)
+    if (Math.random() < 0.05) {
+      await page.waitForTimeout(300 + Math.random() * 700);
+    }
+  }
+  await page.keyboard.press("Space");
+  await page.keyboard.press("Backspace");
+  }
+
+//caption human like 
+async function typeByExecCommand(page, caption) {
+  await page.evaluate(text => {
+    const el = document.querySelector(
+  'div[contenteditable="true"][role="textbox"], div[contenteditable="true"], textarea'
+);
+  if (!el) return;
+
+    el.focus();
+    document.execCommand("insertText", false, text);
+  }, caption);
+}
+//caption input event 
+async function typeByInputEvent(page, caption) {
+  await page.evaluate(text => {
+     const el = document.querySelector(
+  'div[contenteditable="true"][role="textbox"], div[contenteditable="true"], textarea'
+);
+  if (!el) return;
+
+    el.focus();
+    el.textContent = "";
+
+    el.dispatchEvent(new InputEvent("input", {
+      bubbles: true,
+      data: text,
+      inputType: "insertText"
+    }));
+
+    el.textContent = text;
+  }, caption);
+}
+
+//caption force
+//async function typeByForceReact(page, caption) {
+ // await page.evaluate(text => {
+  //   const el = document.querySelector(
+  //'div[contenteditable="true"][role="textbox"], div[contenteditable="true"], textarea'
+//);
+// if (!el) return false;
+
+//    el.focus();
+   // el.innerText = text;
+
+  //  ["input", "change", "keydown", "keyup", "blur"].forEach(evt =>
+  //    el.dispatchEvent(new Event(evt, { bubbles: true }))
+  //  );
+
+ //   return true;
+//  }, caption);
+//}
+
+async function typeByForceReact(page, caption) {
+  const selector =
+    'div[contenteditable="true"][role="textbox"], div[contenteditable="true"], textarea';
+
+  // 1️⃣ FOKUS COMPOSER
+  const focused = await page.evaluate(sel => {
+    const el = document.querySelector(sel);
+    if (!el) return false;
+    el.click();
+    el.focus();
+    return document.activeElement === el;
+  }, selector);
+
+  if (!focused) {
+    console.log("❌ Composer tidak fokus");
+    return { ok: false, step: "focus_failed" };
+  }
+
+  await page.waitForTimeout(300);
+
+  // 2️⃣ TYPE HUMAN-LIKE (ACAK)
+  for (const char of caption) {
+    const delay = 80 + Math.random() * 120; // 80–200 ms
+    await page.keyboard.type(char, { delay });
+
+    if (Math.random() < 0.05) {
+      await page.waitForTimeout(300 + Math.random() * 700);
+    }
+  }
+
+  // 3️⃣ COMMIT REACT
+  await page.keyboard.press("Space");
+  await page.keyboard.press("Backspace");
+
+  // 4️⃣ VALIDASI
+  const ok = await validateCaption(page, caption);
+  if (ok) {
+    return { ok: true, step: "typed_human" };
+  }
+
+  // 5️⃣ FALLBACK: FORCE REACT (KALAU GAGAL)
+  console.log("⚠️ Human typing gagal, pakai force React");
+
+  const forced = await page.evaluate((text, sel) => {
+    const el = document.querySelector(sel);
+    if (!el) return false;
+
+    el.focus();
+    el.innerText = text;
+
+    ["input", "change"].forEach(evt =>
+      el.dispatchEvent(new Event(evt, { bubbles: true }))
+    );
+
+    return true;
+  }, caption, selector);
+
+  return forced
+    ? { ok: true, step: "forced_react" }
+    : { ok: false, step: "all_failed" };
+}
+
+//HELPER ISI CAPTION 
+async function typeByKeyboard(page, caption) {
+  await page.keyboard.type(caption, { delay: 80 });
+}
+
+async function typeByExecCommand(page, caption) {
+  await page.evaluate(text => {
+    document.execCommand("insertText", false, text);
+  }, caption);
+}
+
+async function typeByInputEvent(page, caption) {
+  await page.evaluate(text => {
+      const el = document.querySelector(
+  'div[contenteditable="true"][role="textbox"], div[contenteditable="true"], textarea'
+);
+  if (!el) return false;
+
+    el.focus();
+
+    el.dispatchEvent(new InputEvent("beforeinput", {
+      inputType: "insertText",
+      data: text,
+      bubbles: true,
+      cancelable: true
+    }));
+
+    el.textContent = text;
+
+    el.dispatchEvent(new InputEvent("input", {
+      inputType: "insertText",
+      data: text,
+      bubbles: true
+    }));
+
+    return true;
+  }, caption);
+}
+
+async function typeByForceReact(page, caption) {
+  await page.evaluate(text => {
+      const el = document.querySelector(
+  'div[contenteditable="true"][role="textbox"], div[contenteditable="true"], textarea'
+);
+
+    if (!el) return false;
+
+    el.focus();
+    el.innerText = text;
+
+    ["input","change","keydown","keyup","blur"].forEach(evt =>
+      el.dispatchEvent(new Event(evt, { bubbles: true }))
+    );
+    return true;
+  }, caption);
+}
+
+//isi caption tambahan cara 
+async function typeCaptionUltimate(page, caption) {
+    console.log("🧠 typeCaptionUltimate start");
+   
+    const stable = await typeCaptionStable(page, caption);
+   if (stable?.ok) {
+      console.log("✅ Caption OK via Stable");
+    return;
+     }
+
+   console.log("🧠 Stable gagal → Combo helper");
+
+  
+  console.log("🧠 Activate composer + fill caption (combo)");
+  const comboResult = await activateComposerAndFillCaption(page, caption);
+  console.log("COMBO:", comboResult);
+
+  await page.waitForTimeout(2000);
+
+if (comboResult?.ok) {
+  console.log("✅ Caption OK via combo helper (trust React)");
+  return;
+}
+  
+  
+  console.log("🧠 Try typeCaptionSafe (legacy)");
+
+  try {
+    await typeCaptionSafe(page, caption);
+    await page.waitForTimeout(400);
+
+    if (await validateCaption(page, caption)) {
+      console.log("✅ typeCaptionSafe OK");
+      return;
+    }
+  } catch (e) {
+    console.log("⚠️ typeCaptionSafe gagal, lanjut fallback");
+  }
+
+  const methods = [
+    { name: "Keyboard", fn: typeByKeyboard },
+    { name: "ExecCommand", fn: typeByExecCommand },
+    { name: "InputEvent", fn: typeByInputEvent },
+    { name: "ForceReact", fn: typeByForceReact }
+  ];
+
+  for (const m of methods) {
+    console.log(`✍️ Try ${m.name}...`);
+
+    await m.fn(page, caption);
+    await page.waitForTimeout(500);
+
+    // trigger commit React
+    await page.keyboard.press("Space");
+    await page.keyboard.press("Backspace");
+
+    if (await validateCaption(page, caption)) {
+      console.log(`✅ ${m.name} OK`);
+      return;
+    }
+  }
+
+  throw new Error("❌ Semua metode input caption gagal (akun keras / FB update)");
+}
 
 //Helper isi caption status 
 async function typeCaptionSafe(page, caption) {
@@ -69,9 +516,13 @@ async function typeCaptionSafe(page, caption) {
     return value.includes(text.slice(0, 5));
   }, selector, caption);
 
-  if (!ok) {
-    throw new Error("❌ Caption tidak diterima oleh React FB");
-  }
+ // if (!ok) {
+   // throw new Error("❌ Caption tidak diterima oleh React FB");
+ // }
+if (!ok) {
+  console.log("⚠️ React validation skipped (STATUS mode)");
+  return;
+}
 
   console.log("✅ Caption TERISI (React acknowledged)");
 }
@@ -206,7 +657,7 @@ if (!box) {
   await page.keyboard.press("Backspace");
 
   // 🔥 PAKAI FUNGSI AMAN 
-  await typeCaptionSafe(page, caption);
+  await typeCaptionUltimate(page, caption);
 
   await page.keyboard.press("Space");
   await page.keyboard.press("Backspace");
@@ -406,44 +857,88 @@ async function runAccount(page, row) {
     await page.goto(groupUrl, { waitUntil: "networkidle2" });
     await page.waitForTimeout(4000);
     // DEBUG SETELAH PAGE SIAP
-await page.evaluate(() => {
-  console.log(
-    "SPAN:",
-    [...document.querySelectorAll("span")]
-      .map(e => e.textContent?.trim())
-      .filter(Boolean)
-      .slice(0, 20)
-  );
+
+  await page.evaluate(() => {
+  const hits = [];
+
+  document.querySelectorAll("span").forEach(s => {
+    const t = s.textContent?.trim();
+    if (t && /write|tulis|pikirkan|mind|status/i.test(t)) {
+      hits.push(t);
+    }
+  });
+
+  console.log("SPAN_HITS:", JSON.stringify(hits));
 });
 
 
+//KLIK TULISAN WRITE SOMETHING SEBELUM KOTAK CAPTION//
+//async function openComposer(page) {
+  //const opened = await page.evaluate(() => {
+    //const span = [...document.querySelectorAll("span")]
+      //.find(s =>
+        //$/write something|tulis sesuatu/i
+        //  .test(s.textContent || "")
+     // );
+
+    //if (!span) return false;
+
+    //const container =
+      //span.closest('[data-mcomponent="MContainer"]') ||
+      //span.closest("div");
+
+    //if (!container) return false;
+
+    //container.scrollIntoView({ block: "center" });
+
+   // [
+     // "pointerdown",
+      //"touchstart",
+     // "mousedown",
+    //  "mouseup",
+     // "touchend",
+     // "click"
+   // ].forEach(e =>
+      //container.dispatchEvent(
+      //  new Event(e, { bubbles: true, cancelable: true })
+     // )
+  //  );
+
+    //container.focus?.();
+   // return true;
+  //});
+
+ // if (!opened) throw new Error("❌ Composer tidak berhasil diklik");
+  //console.log("✅ Composer trigger sukses");
+//}
+
 
     // ===== 1️⃣ Klik composer / write something
-  let writeClicked =
-  await safeClickXpath(page, "//*[contains(text(),'Write something')]", "Composer") ||
-  await safeClickXpath(page, "//*[contains(text(),'Tulis sesuatu')]", "Composer") ||
-  await safeClickXpath(page, "//*[contains(text(),'Tulis sesuatu...')]", "Composer");
-
+    let writeClicked =
+    await safeClickXpath(page, "//*[contains(text(),'Write something')]", "Composer") ||
+    await safeClickXpath(page, "//*[contains(text(),'Tulis sesuatu')]", "Composer") ||
+    await safeClickXpath(page, "//*[contains(text(),'Tulis sesuatu...')]", "Composer");
+    
     await page.waitForTimeout(2000);
    // 1️⃣ Klik placeholder composer
-   await page.waitForSelector(
-    'div[role="button"][data-mcomponent="ServerTextArea"]',
-    { timeout: 20000 }
-  );
+     await page.waitForSelector(
+     'div[role="button"][data-mcomponent="ServerTextArea"]',
+      { timeout: 10000 }
+   );
 
-   await page.evaluate(() => {
-    const el = document.querySelector(
-     'div[role="button"][data-mcomponent="ServerTextArea"]'
-    );
-    if (!el) return;
+    await page.evaluate(() => {
+     const el = document.querySelector(
+       'div[role="button"][data-mcomponent="ServerTextArea"]'
+      );
+      if (!el) return;
 
     el.scrollIntoView({ block: "center" });
 
-    ["touchstart","touchend","mousedown","mouseup","click"]
-      .forEach(e =>
-        el.dispatchEvent(new Event(e, { bubbles: true }))
-     );
-  });
+       ["touchstart","touchend","mousedown","mouseup","click"]
+        .forEach(e =>
+          el.dispatchEvent(new Event(e, { bubbles: true }))
+       );
+       });
 
   
 await page.waitForFunction(() => {
@@ -481,7 +976,7 @@ if (!box) {
   await page.keyboard.up("Control");
   await page.keyboard.press("Backspace");
 
-  await page.keyboard.type(caption, { delay: 90 });
+  await typeCaptionUltimate(page, caption);
 
   await page.keyboard.press("Space");
   await page.keyboard.press("Backspace");
@@ -547,41 +1042,41 @@ await page.evaluate(() => {
 });
 
 console.log("✅ Klik POST (EN+ID)");
-await delay(4000);
-//console.log(`✅ Posting selesai untuk ${account}`);
+await delay(3000);
+console.log(`✅ Posting selesai untuk ${account}`);
     
   //----FUNGSI MELAKUKAN LIKE POSTINGAN DI LINK GRUP ---////
     
  // await page.goto(groupUrl, { waitUntil: "networkidle2" });
- // console.log(" Mulai akan lakukan like postingan");
+  //console.log(" Mulai akan lakukan like postingan");
     
-  ///let max = 10;        // jumlah like maksimal
- /// let delayMs = 3000;  // delay antar aksi (ms)
-  ///let clicked = 0;
-    
-  //async function delay(ms) {
-  //  return new Promise(res => setTimeout(res, ms));
-//  }
+  //let max = 10;        // jumlah like maksimal
+  //let delayMs = 3000;  // delay antar aksi (ms)
+  //let clicked = 0;
+
+ // async function delay(ms) {
+   // return new Promise(res => setTimeout(res, ms));
+ // }
 
  // while (clicked < max) {
-  //  const button = await page.$(
-  //    'div[role="button"][aria-label*="Like"],div[role="button"][aria-label*="like"], div[role="button"][aria-label*="Suka"]'
-  /// );
+    //const button = await page.$(
+      //'div[role="button"][aria-label*="Like"],div[role="button"][aria-label*="like"], div[role="button"][aria-label*="Suka"]'
+  // );
 
- /// if (button) {
- //     await button.tap(); // ✅ simulate tap (touchscreen)
-  ///    clicked++;
+  //if (button) {
+     // await button.tap(); // ✅ simulate tap (touchscreen)
+      //clicked++;
     //  console.log(`👍 Klik tombol Like ke-${clicked}`);
-  ///  } else {
- ///     console.log("🔄 Tidak ada tombol Like, scroll...");
-///    }
+    //} else {
+      //console.log("🔄 Tidak ada tombol Like, scroll...");
+   // }
 
     // Scroll sedikit biar postingan baru muncul
- ///   await page.evaluate(() => window.scrollBy(0, 500));
-///   await delay(delayMs);
-// }
+    //await page.evaluate(() => window.scrollBy(0, 500));
+  // await delay(delayMs);
+ //}
 
- ///console.log(`🎉 Selesai! ${clicked} tombol Like sudah diklik.`);
+ //console.log(`🎉 Selesai! ${clicked} tombol Like sudah diklik.`);
 
 
 
@@ -619,17 +1114,17 @@ async function safeClickEl(el) {
 
 
 // ===== Fungsi klik by XPath
-async function safeClickXpath(page, xpath, desc = "elemen") {
-  try {
-    const el = await page.waitForXPath(xpath, { visible: true, timeout: 8000 });
-    await el.click();
-    console.log(`✅ Klik ${desc}`);
-    return true;
-  } catch (e) {
-    console.log(`❌ Gagal klik ${desc}:`, e.message);
-    return false;
+  async function safeClickXpath(page, xpath, desc = "elemen") {
+    try {
+      const el = await page.waitForXPath(xpath, { visible: true, timeout: 8000 });
+     await el.click();
+      console.log(`✅ Klik ${desc}`);
+     return true;
+    } catch (e) {
+     console.log(`❌ Gagal klik ${desc}:`, e.message);
+      return false;
+    }
   }
-}
 
 // ===== Fungsi scan elemen verbose
 async function scanAllElementsVerbose(page, label = "Scan") {
@@ -1013,7 +1508,7 @@ function delay(ms) {
 console.log("📋 Semua status rows:", statusRows);
      
 
-     const rowsStatusForAccount = statusRows.filter(row => {
+      const rowsStatusForAccount = statusRows.filter(row => {
   if (row.account !== acc.account) return false;
 
   const rowDate = parseTanggalXLSX(row.tanggal);
@@ -1029,37 +1524,31 @@ console.log("📋 Semua status rows:", statusRows);
   return rowDate === today;
  });
       
- // untuk grup
-//const rowsForAccount = groupRows.filter(row => {
-  //if (row.account !== acc.account) return false;
+ // ================== FILTER GROUP BERDASARKAN TANGGAL ==================
+//group/const rowsForAccount = groupRows.filter(row => {
+ // if (row.account !== acc.account) return false;
 
- /// const rowDate = parseTanggalXLSX(row.tanggal);
- /// if (rowDate !== today) return false;
-
- /// const jamList = parseJamRow(row.jam);
- /// if (jamList.length === 0) return false;
-
- /// if (!isJamNow(jamList)) {
-   /// console.log(`⏭️ Skip row, jam sekarang tidak cocok: ${jamList.join(",")}`);
-//  return false;
- // }
-
- // return true;
-//});
-
-// untuk status
-//const rowsStatusForAccount = statusRows.filter(row => {
- /// if (row.account !== acc.account) return false;
-
+ // if (!row.tanggal) {
+//    console.log("⚠️ Row grup TANPA tanggal, skip:", row);
+  //  return false;
+  //}
+//
  // const rowDate = parseTanggalXLSX(row.tanggal);
- /// if (rowDate !== today) return false;
 
- /// const jamList = parseJamRow(row.jam);
- /// if (jamList.length === 0) return false;
+//  if (!rowDate) {
+   // console.log("⚠️ Format tanggal grup tidak valid:", row.tanggal);
+  //  return false;
+  //}
 
- // return isJamNow(jamList);
-///});
+ // if (rowDate !== today) {
+   // console.log(
+    ///  `⏭️ Skip grup karena beda tanggal → XLSX: ${rowDate}, TODAY: ${today}`
+   // );
+   /// return false;
+ /// }
 
+ /// return true;
+//$group});
 
 console.log("ACCOUNT JSON:", `[${acc.account}]`);
    
@@ -1099,12 +1588,12 @@ await page.goto("https://m.facebook.com", { waitUntil: "networkidle2" });
     await page.reload({ waitUntil: "networkidle2" });
 
       // ✅ LANGSUNG POSTGROUP PAKAI DATA
-for (const row of rowsForAccount) {
-  await runAccount(page, row);
-  }
+    for (const row of rowsForAccount) {
+     await runAccount(page, row);
+    }
       // POST STATUS (kalau ada)
-for (const row of rowsStatusForAccount) {
-  await runStatus(page, row);
+ for (const row of rowsStatusForAccount) {
+    await runStatus(page, row);
   }
 
       // ===== Stop recorder
@@ -1115,10 +1604,25 @@ for (const row of rowsStatusForAccount) {
       await context.close();
       console.log(`✅ Posting selesai untuk ${acc.account}`);
     //await delay(6000); // jeda aman antar akun
-     const delayAkun = Number(rowsForAccount[0]?.delay_akun) || 60000;
-     console.log(`⏳ Delay antar akun: ${delayAkun} ms`);
-     await delay(delayAkun);   
-    
+     const delayRow = rowsForAccount.find(r => r.delay_akun);
+    const delayAkun = Number(delayRow?.delay_akun) || 60000;
+   console.log(
+  "🕒 Delay dari row tanggal:",
+  delayRow?.delay_akun,
+  "→ dipakai:",
+  delayAkun
+);
+
+await delay(delayAkun);
+console.log(
+  "DEBUG tanggal:",
+  rowsForAccount.map(r => ({
+    tanggal_raw: r.tanggal,
+    tanggal_parse: parseTanggalXLSX(r.tanggal),
+    delay_akun: r.delay_akun
+  }))
+);
+      
     }
 
     await browser.close();
@@ -1127,4 +1631,3 @@ for (const row of rowsStatusForAccount) {
     console.error("❌ Error utama:", err);
   }
 })();
-      
