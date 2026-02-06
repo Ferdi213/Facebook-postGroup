@@ -23,13 +23,16 @@ function parseJamRow(jamStr) {
 function alreadyPostedToday(account, type, jam) {
   const key = `${account}_${type}_${jam}_${getTodayWIB().toISOString().slice(0,10)}`;
   const file = path.join(__dirname, ".posted", key);
+  return fs.existsSync(file);
+}
 
-  if (fs.existsSync(file)) return true;
-
+function markPostedToday(account, type, jam) {
+  const key = `${account}_${type}_${jam}_${getTodayWIB().toISOString().slice(0,10)}`;
+  const file = path.join(__dirname, ".posted", key);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, "ok");
-  return false;
 }
+
 
 
 // cek apakah jam sekarang ada di list jam row
@@ -1651,6 +1654,8 @@ if (alreadyPostedToday(acc.account, "status", matchedJam)) {
 
   // 5️⃣ BARU POST
   await runAccount(page, row);
+  markPostedToday(acc.account, "status", matchedJam); // 🔒 LOCK
+  
 }
 
 
@@ -1673,6 +1678,8 @@ if (alreadyPostedToday(acc.account, "status", matchedJam)) {
 }
   
   await runStatus(page, row);
+  markPostedToday(acc.account, "status", matchedJam); // 🔒 LOCK
+
 }
       
 
