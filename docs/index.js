@@ -253,7 +253,7 @@ async function typeByKeyboard(page, caption) {
   const el = document.querySelector(
   'div[contenteditable="true"][role="textbox"], div[contenteditable="true"], textarea'
 );
- await page.click(selector);
+ await page.click(el);
   await page.waitForTimeout(1000);
     // 3️⃣ TYPE CAPTION (HUMAN-LIKE + RANDOM)
   for (const char of caption) {
@@ -1646,16 +1646,15 @@ for (const row of rowsForAccount) {
   continue;
   }
 
-if (alreadyPostedToday(acc.account, "status", matchedJam)) {
-  console.log(`⏭️ [STATUS] ${acc.account} sudah posting jam ${matchedJam}`);
+  
+if (alreadyPostedToday(acc.account, "group", matchedJam)) {
+  console.log(`⏭️ [group] ${acc.account} sudah posting jam ${matchedJam}`);
   continue;
 }
-
-
   // 5️⃣ BARU POST
   await runAccount(page, row);
-  markPostedToday(acc.account, "status", matchedJam); // 🔒 LOCK
-  
+  markPostedToday(acc.account, "group", matchedJam);
+
 }
 
 
