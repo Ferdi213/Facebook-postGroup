@@ -10,6 +10,15 @@ const { PuppeteerScreenRecorder } = require("puppeteer-screen-recorder");
 
 puppeteer.use(StealthPlugin())
 
+//acak akun
+function shuffleArray(arr) {
+  return arr
+    .map(v => ({ v, r: Math.random() }))
+    .sort((a, b) => a.r - b.r)
+    .map(x => x.v);
+}
+
+
 //parsing jam dari row XLSX, misal "09:00,10:15"
 function parseJamRow(jamStr) {
   if (!jamStr) return [];
