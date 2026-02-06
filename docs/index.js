@@ -860,7 +860,7 @@ async function runAccount(page, row) {
   console.log(`🔗 Grup: ${groups.length}`);
     
   for (let i = 0; i < groups.length; i++) {
-    const groupUrl = groups[i];
+    let groupUrl = groups[i];
    
     console.log(`\n📌 [${account}] Grup ${i + 1}/${groups.length}`);
     console.log(`➡️ ${groupUrl}`);
@@ -1633,19 +1633,15 @@ for (const row of rowsForAccount) {
     continue;
   }
 
-  // 2️⃣ cek apakah sekarang cocok jam XLSX
-  if (!isJamNow(jamList)) {
-    console.log("⏭️ Bukan jam XLSX, skip:", jamList);
-    continue;
-  }
+
 
   // 3️⃣ jam sekarang WIB
   const matchedJam = getMatchedJam(jamList);
-
-if (!matchedJam) {
+ 
+  if (!matchedJam) {
   console.log("⏭️ Bukan window jam XLSX:", jamList);
   continue;
-}
+  }
 
 if (alreadyPostedToday(acc.account, "status", matchedJam)) {
   console.log(`⏭️ [STATUS] ${acc.account} sudah posting jam ${matchedJam}`);
@@ -1664,9 +1660,7 @@ for (const row of rowsStatusForAccount) {
   const jamList = parseJamRow(row.jam || row.waktu || row.jadwal);
   if (jamList.length === 0) continue;
 
-  if (!isJamNow(jamList)) continue;
-
-  const matchedJam = getMatchedJam(jamList);
+    const matchedJam = getMatchedJam(jamList);
 
 if (!matchedJam) {
   console.log("⏭️ Bukan window jam XLSX:", jamList);
