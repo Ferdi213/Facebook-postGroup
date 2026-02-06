@@ -47,8 +47,8 @@ function getMatchedJam(jamList) {
     const [h, m] = j.split(":").map(Number);
     const jamMinutes = h * 60 + m;
 
-    // window aman: dari jam XLSX sampai +4 menit
-    if (nowMinutes >= jamMinutes && nowMinutes <= jamMinutes + 4) {
+    // window aman: dari jam XLSX sampai +16 menit
+    if (nowMinutes >= jamMinutes && nowMinutes <= jamMinutes + 16) {
       return j; // ← JAM XLSX
     }
   }
