@@ -33,13 +33,25 @@ function alreadyPostedToday(account, type, jam) {
 
 
 // cek apakah jam sekarang ada di list jam row
-function isJamNow(jamList) {
- const now = new Date(
+function getMatchedJam(jamList) {
+  const now = new Date(
     new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" })
   );
-  const nowHHmm = now.toTimeString().slice(0, 5); // format "HH:mm"
-  return jamList.includes(nowHHmm);
+
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+  for (const j of jamList) {
+    const [h, m] = j.split(":").map(Number);
+    const jamMinutes = h * 60 + m;
+
+    // window aman: dari jam XLSX sampai +4 menit
+    if (nowMinutes >= jamMinutes && nowMinutes <= jamMinutes + 4) {
+      return j; // ← JAM XLSX
+    }
+  }
+  return null;
 }
+
 //Validasinya 
 async function validateCaption(page, caption) {
   return await page.evaluate(text => {
@@ -1628,15 +1640,18 @@ for (const row of rowsForAccount) {
   }
 
   // 3️⃣ jam sekarang WIB
-  const jamNow = new Date(
-    new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" })
-  ).toTimeString().slice(0, 5);
+  const matchedJam = getMatchedJam(jamList);
 
-  // 4️⃣ lock per jam
-  if (alreadyPostedToday(acc.account, "group", jamNow)) {
-    console.log(`⏭️ [GROUP] ${acc.account} sudah posting jam ${jamNow}`);
-    continue;
-  }
+if (!matchedJam) {
+  console.log("⏭️ Bukan window jam XLSX:", jamList);
+  continue;
+}
+
+if (alreadyPostedToday(acc.account, "status", matchedJam)) {
+  console.log(`⏭️ [STATUS] ${acc.account} sudah posting jam ${matchedJam}`);
+  continue;
+}
+
 
   // 5️⃣ BARU POST
   await runAccount(page, row);
@@ -1651,15 +1666,18 @@ for (const row of rowsStatusForAccount) {
 
   if (!isJamNow(jamList)) continue;
 
-  const jamNow = new Date(
-    new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" })
-  ).toTimeString().slice(0, 5);
+  const matchedJam = getMatchedJam(jamList);
 
-  if (alreadyPostedToday(acc.account, "status", jamNow)) {
-    console.log(`⏭️ [STATUS] ${acc.account} sudah posting jam ${jamNow}`);
-    continue;
-  }
+if (!matchedJam) {
+  console.log("⏭️ Bukan window jam XLSX:", jamList);
+  continue;
+}
 
+if (alreadyPostedToday(acc.account, "status", matchedJam)) {
+  console.log(`⏭️ [STATUS] ${acc.account} sudah posting jam ${matchedJam}`);
+  continue;
+}
+  
   await runStatus(page, row);
 }
       
