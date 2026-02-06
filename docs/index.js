@@ -249,25 +249,28 @@ async function activateComposerAndFillCaption(page, caption) {
 }
 
 //caption keyboard 
+
 async function typeByKeyboard(page, caption) {
-  const el = document.querySelector(
-  'div[contenteditable="true"][role="textbox"], div[contenteditable="true"], textarea'
-);
- await page.click(el);
-  await page.waitForTimeout(1000);
-    // 3️⃣ TYPE CAPTION (HUMAN-LIKE + RANDOM)
+  const selector =
+    'div[contenteditable="true"][role="textbox"], div[contenteditable="true"], textarea';
+
+  await page.waitForSelector(selector, { timeout: 15000 });
+  await page.click(selector);
+  await page.waitForTimeout(300);
+
   for (const char of caption) {
     const delay = 80 + Math.random() * 120; // 80–200 ms
     await page.keyboard.type(char, { delay });
 
-    // jeda mikir kecil (±5%)
     if (Math.random() < 0.05) {
       await page.waitForTimeout(300 + Math.random() * 700);
     }
   }
+
+  // trigger React
   await page.keyboard.press("Space");
   await page.keyboard.press("Backspace");
-  }
+                                }
 
 //caption human like 
 async function typeByExecCommand(page, caption) {
@@ -1652,8 +1655,14 @@ if (alreadyPostedToday(acc.account, "group", matchedJam)) {
   continue;
 }
   // 5️⃣ BARU POST
-  await runAccount(page, row);
+  const ok = await runAccount(page, row);
+
+if (ok) {
   markPostedToday(acc.account, "group", matchedJam);
+} else {
+  console.log("⚠️ Status gagal, tidak di-lock");
+}
+
 
 }
 
@@ -1676,8 +1685,13 @@ if (alreadyPostedToday(acc.account, "status", matchedJam)) {
   continue;
 }
   
-  await runStatus(page, row);
-  markPostedToday(acc.account, "status", matchedJam); // 🔒 LOCK
+  const ok = await runStatus(page, row);
+
+if (ok) {
+  markPostedToday(acc.account, "status", matchedJam);
+} else {
+  console.log("⚠️ Status gagal, tidak di-lock");
+}
 
 }
       
